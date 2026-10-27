@@ -20,7 +20,7 @@ export function validateFillResponse(report,conditions,courses){
     }
   }
 }
-export function defaults(){return {term:'2026-2',majorProfile:'it',freeDaysHard:true,grade:'4',tracks:[],generalAreas:[],required:[],
+export function defaults(){return {term:'2026-2',majorProfile:'it',excludeInternet:false,freeDaysHard:true,grade:'4',tracks:[],generalAreas:[],required:[],
   creditMode:'exact',targets:{other:{target:null,min:null,max:null},total:{target:18,min:17,max:18},major:{target:null,min:null,max:null},general:{target:null,min:null,max:null}},
   freeDays:[],excluded:[],excludedCodes:[],sessionExcluded:[],preferredProfessors:[],excludedProfessors:[],
   allowedProfessors:[],onlyProfessors:false,lunch:{enabled:false,prefer:true,days:['월','화','수','목','금'],start:'12:00',end:'13:00'},

@@ -4,7 +4,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 let data, filtered = [], selected = new Map(), results = [], current = 0, page = 0, request = 0, revision = 0;
 let planner;
 const codeKey = c => `${c.year}-${c.semester}:${c.code}`;
-const timeLabel = c => planner?.timeLabel(c) || ({unspecified:'시간 미지정',unverified_subperiod:'A/B 교시 확인 필요',unsupported:'시간 해석 확인 필요'}[c.timeStatus] || c.timeRaw);
+const timeLabel = c => c.app_delivery_mode==='internet' ? '인터넷 강의 · 사용자 지정 분류 / 실제 일정 확인 필요' : planner?.timeLabel(c) || ({unspecified:'시간 미지정',unverified_subperiod:'A/B 교시 확인 필요',unsupported:'시간 해석 확인 필요'}[c.timeStatus] || c.timeRaw);
 function message(text='') { $('message').textContent = text; }
 import {api} from './transport.mjs';
 
