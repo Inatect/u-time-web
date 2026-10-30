@@ -91,3 +91,22 @@ export function repairLegacyReplacementPins(plan){
   return accidental;
 }
 export function undo(plan){const previous=plan.undo.pop();if(previous)Object.assign(plan,previous);plan.results=[];return !!previous;}
+
+// Pin an existing automatic course without inserting its ID twice.
+export function pinDraftCourse(plan,c){
+ const key=`${c.year}-${c.semester}:${c.code}`;
+ if(!plan.ids.includes(c.id))throw Error('현재 시간표에 없는 강좌입니다.');
+ plan.conditions.required=plan.conditions.required.filter(r=>r.subject!==key);
+ plan.conditions.required.push({subject:key,id:c.id,mode:'fixed',origin:'user'});
+ plan.autoIds=plan.autoIds.filter(id=>id!==c.id);
+}
+
+export function resetDialogConditions(plan){
+  checkpoint(plan);
+  const base=defaults();
+  for(const key of ['preferredProfessors','excludedProfessors','allowedProfessors','onlyProfessors','lunch','preferences','excludedCodes'])plan.conditions[key]=clone(base[key]);
+  plan.conditions.scoringMode='legacy';
+  plan.conditions.weights={days:2,gaps:2,professors:2,early:1,late:1,lunch:2};
+  plan.conditions.retakeCodes=[];
+  plan.results=[];plan.report=null;
+}

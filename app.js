@@ -13,7 +13,7 @@ function invalidate() { revision++; results = []; current = 0; renderResults(); 
 async function refresh() {
   const token = ++request;
   const params = new URLSearchParams({q:$('search').value,kind:$('kind').value,membership:$('membership').value,grade:$('grade').value});
-  const response = planner ? await api('/api/search',{query:$('search').value,kind:$('kind').value,...planner.catalogFilters()}) : await api(`/api/courses?${params}`);
+  const response = planner ? await api('/api/search',{grade:$('grade').value,query:$('search').value,kind:$('kind').value,...planner.catalogFilters()}) : await api(`/api/courses?${params}`);
   if (token !== request) return;
   filtered = response; page = 0; renderCourses();
 }

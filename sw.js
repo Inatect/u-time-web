@@ -1,5 +1,5 @@
 // Cache the app shell and bundled release only. Cloud errors are never hidden by stale API results.
-const VERSION='u-web-d29ec1f34013ff1b',SHELL=['./','./index.html','./app.js','./planner-ui.js','./state.mjs','./style.css','./mobile.css','./config.js','./transport.mjs','./source.mjs','./core.mjs','./worker.mjs','./pwa.mjs','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./catalog.json'];
+const VERSION='u-web-8d063b0d1d88b29c',SHELL=['./','./index.html','./app.js','./planner-ui.js','./state.mjs','./style.css','./dashboard.css','./candidate-view.mjs','./mobile.css','./config.js','./transport.mjs','./source.mjs','./core.mjs','./worker.mjs','./pwa.mjs','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./catalog.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(SHELL))));
 self.addEventListener('message',event=>{if(event.data==='activate-update')self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('u-web-')&&k!==VERSION)await caches.delete(k);await self.clients.claim();})()));

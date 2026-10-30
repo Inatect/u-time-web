@@ -1,4 +1,5 @@
-import {clone,blankPlan,loadState,saveState,checkpoint,removeCourse,applyReplacement,undo,validateFillResponse,generationRequired,replaceDraftCourse} from './state.mjs';
+import {candidateGallery} from './candidate-view.mjs';
+import {clone,blankPlan,loadState,saveState,checkpoint,removeCourse,applyReplacement,undo,validateFillResponse,generationRequired,replaceDraftCourse,pinDraftCourse,resetDialogConditions} from './state.mjs';
 const $=id=>document.getElementById(id);
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const subject=c=>`${c.year}-${c.semester}:${c.code}`;
@@ -38,7 +39,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
   $('auto-generate').insertAdjacentHTML('beforebegin','<label class="checkline"><input id="exclude-internet" type="checkbox">인터넷 강의 제외</label><p class="hint">검색·자동 추가·교체 후보에 적용합니다. 직접 지정한 강좌는 유지합니다. 시간 미등록 강좌의 인터넷 분류는 사용자 지정 기준입니다.</p>');
   document.querySelector('.results .section-head').insertAdjacentHTML('afterend',`<div class="plan-toolbar"><label>독립 시간표<select id="plan-select"></select></label><button id="new-plan" class="secondary">현재 안 복사</button><button id="save-plan" class="secondary">수정 시간표 저장</button><button id="undo-plan" class="secondary">되돌리기</button><button id="refill-plan" class="secondary">남은 강좌 유지하고 다시 채우기</button><button id="find-open" class="secondary">빈 시간 강좌 찾기</button></div><p class="hint">편집 초안은 학점 미달 상태로 유지할 수 있습니다. 삭제한 과목은 이번 조합에서 제외됩니다. 전체 재조합은 위 생성 버튼으로만 실행합니다.</p><div id="compare-plans"></div>`);
   const settings=document.createElement('dialog');settings.id='constraints-dialog';
-  settings.innerHTML=`<div class="dialog-head"><h2>시간표에 실제 적용할 조건</h2><button id="close-constraints" class="secondary">설정 적용·닫기</button></div><p class="hint">목록의 교수 필터와 별개입니다. 복수 선택은 Ctrl 키 또는 Command 키를 사용하세요.</p><div class="planner-grid"><label>선호 교수<select id="preferred-profs" multiple size="5"></select></label><label>제외 교수<select id="excluded-profs" multiple size="5"></select></label><label>허용 교수<select id="allowed-profs" multiple size="5"></select><span class="checkline"><input id="only-profs" type="checkbox">선택한 교수만 허용</span></label></div><h3>수강이력과 제외과목</h3><p class="hint">강좌 카드에서 ‘이전 수강’ 또는 ‘과목 제외’를 눌러 등록합니다. 과목번호가 같은 모든 분반에 적용하며 비슷한 이름의 다른 과목을 자동 제외하지 않습니다.</p><div id="history-list"></div><div id="excluded-list"></div><h3>점심시간 비우기</h3><label class="checkline"><input id="lunch-enabled" type="checkbox">필수 조건으로 적용</label><div class="planner-grid"><label>시작<input id="lunch-start" type="time"></label><label>종료<input id="lunch-end" type="time"></label><fieldset><legend>점심 적용 요일</legend><div id="lunch-days" class="days">${[...'월화수목금토일'].map(d=>`<label class="day"><input type="checkbox" value="${d}" aria-label="점심 ${d}요일"><span>${d}</span></label>`).join('')}</div><button id="lunch-weekdays" class="secondary" type="button">평일 전체 선택</button></fieldset></div><label class="checkline"><input id="lunch-prefer" type="checkbox">필수 해제 시 점심 확보를 선호 점수에 반영</label><h3>시간 선호</h3><div class="planner-grid"><label><span class="checkline"><input id="early-enabled" type="checkbox">기준보다 이른 시작 피하기</span><input id="early-before" type="time"></label><label><span class="checkline"><input id="late-enabled" type="checkbox">기준보다 늦은 종료 피하기</span><input id="late-after" type="time"></label></div><p id="clock-guidance" class="notice" role="status"></p><button id="settings-clock" class="secondary">교시표 관리 (선택)</button>`;
+  settings.innerHTML=`<div class="dialog-head"><h2>시간표에 실제 적용할 조건</h2><button id="reset-constraints" class="secondary" type="button">조건 설정 초기화</button><button id="close-constraints" class="secondary">설정 적용·닫기</button></div><p class="hint">초기화는 이 창의 교수·점심·시간·추천 중요도·제외 과목·재수강 예외를 기본값으로 되돌립니다. 담은 강좌·고정·목표학점·공강일·인터넷 제외·수강이력은 유지됩니다. 목록의 교수 필터와 별개입니다. 복수 선택은 Ctrl 키 또는 Command 키를 사용하세요.</p><div class="planner-grid"><label>선호 교수<select id="preferred-profs" multiple size="5"></select></label><label>제외 교수<select id="excluded-profs" multiple size="5"></select></label><label>허용 교수<select id="allowed-profs" multiple size="5"></select><span class="checkline"><input id="only-profs" type="checkbox">선택한 교수만 허용</span></label></div><h3>수강이력과 제외과목</h3><p class="hint">강좌 카드에서 ‘이전 수강’ 또는 ‘과목 제외’를 눌러 등록합니다. 과목번호가 같은 모든 분반에 적용하며 비슷한 이름의 다른 과목을 자동 제외하지 않습니다.</p><div id="history-list"></div><div id="excluded-list"></div><h3>점심시간 비우기</h3><label class="checkline"><input id="lunch-enabled" type="checkbox">필수 조건으로 적용</label><div class="planner-grid"><label>시작<input id="lunch-start" type="time"></label><label>종료<input id="lunch-end" type="time"></label><fieldset><legend>점심 적용 요일</legend><div id="lunch-days" class="days">${[...'월화수목금토일'].map(d=>`<label class="day"><input type="checkbox" value="${d}" aria-label="점심 ${d}요일"><span>${d}</span></label>`).join('')}</div><button id="lunch-weekdays" class="secondary" type="button">평일 전체 선택</button></fieldset></div><label class="checkline"><input id="lunch-prefer" type="checkbox">필수 해제 시 점심 확보를 선호 점수에 반영</label><h3>시간 선호</h3><p class="hint">이른 시작 제외는 필수조건입니다. 기준 시각 이전에 시작하는 수업은 포함하지 않습니다. 고정 강좌와 충돌하거나 학점을 채울 수 없으면 실패 이유를 표시합니다. 늦은 종료 피하기는 선호조건입니다. 시간 미지정 강좌의 실제 일정은 별도 확인이 필요합니다. 적용 후 다시 생성하세요.</p><div class="planner-grid"><label><span class="checkline"><input id="early-enabled" type="checkbox">기준보다 이른 시작 제외 (필수)</span><input id="early-before" type="time"></label><label><span class="checkline"><input id="late-enabled" type="checkbox">기준보다 늦은 종료 피하기</span><input id="late-after" type="time"></label></div><p id="clock-guidance" class="notice" role="status"></p><button id="settings-clock" class="secondary">교시표 관리 (선택)</button>`;
   settings.insertAdjacentHTML('beforeend',`<h3>추천 중요도</h3><label>추천 방식<select id="scoring-mode"><option value="legacy">기존 우선순위 유지</option><option value="weighted">내 중요도로 점수 계산</option></select></label><div class="planner-grid">${[['days','등교일 줄이기'],['gaps','빈 시간 줄이기'],['professors','선호 교수'],['early','이른 수업 피하기'],['late','늦은 수업 피하기'],['lunch','점심 확보']].map(([k,label])=>`<label>${label}<select id="weight-${k}">${[0,1,2,3,4,5].map(n=>`<option value="${n}">${n} · ${['반영 안 함','낮음','보통','중요','높음','매우 중요'][n]}</option>`).join('')}</select></label>`).join('')}</div><p class="hint">필수조건을 통과한 후보끼리만 점수를 비교합니다. 시각 선호는 확인한 교시 시각표와 기준 시각이 필요합니다. 탐색 한도 내 발견 후보의 순위입니다.</p><h3>재수강 예외</h3><label>다시 포함할 과목번호 (쉼표 구분)<input id="retake-codes" placeholder="예: EN0025"></label><p class="hint">이전 수강 제외만 해제합니다. 학교의 재수강 자격이나 성적 처리 보장은 아닙니다.</p>`);
   document.body.append(settings);
   const advanced=document.createElement('dialog');advanced.id='advanced-dialog';
@@ -68,12 +69,57 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
   settings.append($('free-days').closest('fieldset'),$('excluded').closest('label'));
   const tools=document.createElement('details');tools.className='extra-generation';tools.innerHTML='<summary>분반 조합 · 인터넷강의 시나리오</summary>';$('section-generate').before(tools);tools.append($('section-generate'),$('scenario-generate'),$('scenario-selection'));
   const chosen=document.createElement('details');chosen.innerHTML='<summary>고정 강좌 관리</summary>';$('selected').before(chosen);chosen.append($('selected'));
-  const extraFilters=document.createElement('details');extraFilters.innerHTML='<summary>교수·학점 상세 검색</summary>';filters.before(extraFilters);extraFilters.append(filters);
+  const extraFilters=document.createElement('details');extraFilters.innerHTML='<summary>교수·학점 상세 검색</summary>';filters.before(extraFilters);extraFilters.append(filters);extraFilters.insertAdjacentHTML('beforeend','<button type="button" id="reset-detail-search" class="secondary">상세 검색 초기화</button><p class="hint">교수 선택과 학점은 함께 적용됩니다. 학점 입력 즉시 검색합니다.</p>');
   const mobile=document.createElement('nav');mobile.className='mobile-tabs';mobile.setAttribute('aria-label','화면 전환');mobile.innerHTML='<button data-mobile="search">강좌 검색</button><button data-mobile="schedule" aria-current="page">시간표</button><button data-mobile="conditions">조건</button>';workspace.before(mobile);document.body.dataset.mobile='schedule';
   mobile.onclick=event=>{const v=event.target.dataset.mobile;if(!v)return;if(v==='conditions'){$('open-constraints').click();return;}document.body.dataset.mobile=v;mobile.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',b.dataset.mobile===v?'page':'false'));};
   const tabs=document.createElement('div');tabs.className='view-tabs';tabs.setAttribute('role','tablist');tabs.innerHTML='<button role="tab" aria-selected="true" data-view="week">주간 시간표</button><button role="tab" aria-selected="false" data-view="saved">저장·성공/실패안</button><button role="tab" aria-selected="false" data-view="candidates">후보 비교</button>';
   results.querySelector('.section-head').after(tabs);results.dataset.view='week';
   tabs.onclick=event=>{if(!event.target.dataset.view)return;results.dataset.view=event.target.dataset.view;tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b===event.target)));};
+
+
+  // Move live controls without recreating IDs or replacing their event handlers.
+  document.querySelector('#top-search').append($('search'));
+  $('search').setAttribute('aria-label','과목명, 교수명, 과목코드 검색');
+  $('search').placeholder='과목명, 교수명으로 강좌를 검색해보세요';
+  document.querySelector('.search-label').remove();
+  document.querySelector('#top-term').append($('plan-term').closest('label'));
+  workspace.append(document.querySelector('.builder'));
+  stage.prepend(results);
+  const catalogFold=document.createElement('details');catalogFold.className='catalog-drawer';catalogFold.id='catalog-drawer';
+  catalogFold.innerHTML='<summary>강좌 탐색 <span>실제 개설 강좌를 검색하고 시간표에 담아보세요</span></summary>';
+  stage.append(catalogFold);catalogFold.append(document.querySelector('.catalog'));
+  const creditCard=document.createElement('section');creditCard.className='credit-card';
+  creditCard.innerHTML='<h2>학점 현황 <span>현재 시간표 기준</span></h2><div id="credit-overview" aria-live="polite"></div>';
+  document.querySelector('.builder').before(creditCard);
+  const rail=document.createElement('aside');rail.className='dashboard-rail';rail.setAttribute('aria-label','학점 현황과 시간표 조건');
+  workspace.append(rail);rail.append(creditCard,document.querySelector('.builder'));
+  document.querySelector('.builder h2 span').textContent='시간표 조건';
+  results.querySelector('h2 span').textContent='주간 시간표';
+  scope.querySelector('.planner-grid').prepend(trackLabel);
+  scope.append($('auto-scope-summary'));
+  const creditDetails=document.createElement('details');creditDetails.innerHTML='<summary>학점 상세 검사 결과</summary>';
+  $('credit-status').before(creditDetails);creditDetails.append($('credit-status'));
+  rail.querySelector('.builder').append($('free-days').closest('fieldset'));
+  rail.querySelector('.builder').append($('excluded').closest('label'));
+  $('auto-generate').before($('free-days').closest('fieldset'),$('excluded').closest('label'));
+  const appTools=document.createElement('details');appTools.className='app-tools';appTools.innerHTML='<summary>앱 설치 · 백업 · 연결 상태</summary>';
+  document.querySelector('footer').before(appTools);
+  const relocateTools=()=>{const t=document.querySelector('.web-tools');if(t&&!appTools.contains(t))appTools.append(t);};
+  relocateTools();const toolObserver=new MutationObserver(relocateTools);toolObserver.observe(document.querySelector('main'),{childList:true});
+  function openCatalog(){catalogFold.open=true;document.body.dataset.mobile='search';mobile.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',b.dataset.mobile==='search'?'page':'false'));}
+  mobile.addEventListener('click',event=>{if(event.target.closest('[data-mobile]')?.dataset.mobile==='search')openCatalog();});
+  $('search').addEventListener('focus',openCatalog);
+  $('search').addEventListener('input',openCatalog);
+  document.querySelector('.sidebar nav').addEventListener('click',event=>{
+    const b=event.target.closest('[data-nav]');if(!b)return;
+    document.querySelectorAll('.sidebar nav button').forEach(x=>x.removeAttribute('aria-current'));b.setAttribute('aria-current','page');
+  });
+  document.querySelector('.sidebar').addEventListener('click',event=>{
+    const nav=event.target.closest('[data-nav]')?.dataset.nav;if(!nav)return;
+    if(nav==='data'){$('manage').click();return;}if(nav==='settings'){open.click();return;}
+    if(nav==='search'){openCatalog();catalogFold.scrollIntoView({block:'start'});$('search').focus({preventScroll:true});return;}
+    document.body.dataset.mobile='schedule';tabs.querySelector('[data-view="'+nav+'"]').click();results.scrollIntoView({block:'start'});
+  });
 
 
   function persist(){state.fingerprint=data().fingerprint;save();}
@@ -102,7 +148,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     p.timeMapping={source:$('time-source').value.trim(),periods};
   }
   function renderForm(){
-    document.querySelector('.semester').textContent=`${active().conditions.term||'학기 선택'} · 로컬 자료`;
+    document.querySelector('.semester').textContent='나만의 한 주';
     const p=active().conditions;$('exclude-internet').checked=!!p.excludeInternet;$('tracks').disabled=p.term==='2026-2';p.majorProfile??='it';p.targets.other??={target:null,min:null,max:null};$('major-profile').value=p.majorProfile;$('free-days-hard').checked=p.freeDaysHard!==false;
     $('auto-scope-summary').textContent=`자동 추가 전공 범위: ${p.term==='2026-2'?(p.majorProfile==='ai'?'AI융합':'IT융합')+' 2026-2 교과과정 전필·전선':p.tracks.length?p.tracks.join(', '):'수집 전공 전체 합집합'} · 자동 후보 교양영역: ${p.generalAreas.length?p.generalAreas.join(', '):'전체'} · 검색어·목록 필터는 생성 후보를 제한하지 않습니다.`;
     if(!busy)$('result-status').textContent=active().ids.length?`${state.active}안의 초안을 현재 자료·조건으로 검사합니다. 목표 미달 상태도 유지됩니다.`:'과목을 담거나 목표학점을 설정해 자동 채우기를 시작하세요.';
@@ -154,16 +200,20 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
       }
       inspection=info;
       $('credit-status').innerHTML=['total','major','general','other'].map((k,i)=>{const x=info.deltas[k];if(x.target===null)return `${['총','전공','교양','타전공·기타'][i]} <b>${x.actual}</b> · 목표 미지정`;return `${['총','전공','교양','타전공·기타'][i]} <b>${x.actual}</b> / 목표 ${x.target} (목표 대비 ${x.targetDifference>=0?'+':''}${x.targetDifference})${x.short||x.over?` · 부족 ${x.short} / 초과 ${x.over}`:''}`;}).join(' &nbsp; · &nbsp; ');
+      $('credit-overview').innerHTML=['total','major','general','other'].map((k,i)=>{
+        const x=info.deltas[k],target=x.target,percent=target>0?Math.min(100,Math.max(0,x.actual/target*100)):0;
+        return '<div class="credit-stat credit-'+k+'"><div><span>'+['총 이수 학점','전공','교양','타전공·기타'][i]+'</span><strong>'+e(x.actual)+'<small> / '+(target===null?'목표 미지정':e(target)+'학점')+'</small></strong></div><div class="credit-track" role="meter" aria-label="'+['총','전공','교양','기타'][i]+' 목표 대비 학점" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'" aria-valuetext="'+e(x.actual)+'학점, 목표 '+(target===null?'미지정':e(target)+'학점')+'"><span style="width:'+percent+'%"></span></div></div>';
+      }).join('');
       draw();
       await compare();
-    }catch(error){if(token!==revision)return;inspection=null;$('credit-status').textContent=error.message;draw();}
+    }catch(error){if(token!==revision)return;inspection=null;$('credit-status').textContent=error.message;$('credit-overview').textContent='학점 현황을 확인할 수 없습니다.';draw();}
   }
   function draw(){
-    const a=active();$('candidate-tabs').innerHTML=a.results.map((r,i)=>`<button data-planner-result="${i}" class="secondary">후보 ${i+1} · ${r.credits.total}학점 / ${r.days}일${a.conditions.scoringMode==='weighted'?` / ${r.score?.toFixed(2)}점`:''}</button>`).join('');
+    const a=active();$('candidate-tabs').innerHTML=candidateGallery(a.results,data().courses,a.conditions.required,a.ids);
     if(a.results.length){
       
       const reps=a.results;
-      $('candidate-tabs').insertAdjacentHTML('beforeend',`<details class="candidate-comparison" open><summary>전체 후보 비교와 추천 근거</summary><table class="comparison"><thead><tr><th>후보</th><th>총/전공/교양/기타</th><th>등교·공강</th><th>빈 시간</th><th>이른/늦은 수업</th><th>점심</th><th>점수·근거</th></tr></thead><tbody>${reps.map((r,i)=>`<tr><td><button data-planner-result="${i}">후보 ${i+1} 선택</button></td><td>${r.credits.total}/${r.credits.major}/${r.credits.general}/${r.credits.other??0}</td><td>${r.days}일 / ${(r.freeDays||[]).join(', ')||'없음'}</td><td>${r.gaps}${r.gapUnit}</td><td>${r.earlyCount??'미적용'} / ${r.lateCount??'미적용'}</td><td>${r.lunchSatisfied==null?'시각 미확인':r.lunchSatisfied?'확보':'겹침 '+r.lunchConflictMinutes+'분'}</td><td>${r.score?.toFixed(2)??'—'}점<br>${e(r.recommendation)}</td></tr>`).join('')}</tbody></table><p class="hint">새로 생성한 후보는 설정 범위를 충족합니다. 저장된 후보는 현재 학점 규칙으로 다시 검사하며, 미충족 후보는 초안으로 표시합니다.</p></details>`);
+      $('candidate-tabs').insertAdjacentHTML('beforeend',`<details class="candidate-comparison"><summary>전체 후보 비교와 추천 근거</summary><table class="comparison"><thead><tr><th>후보</th><th>총/전공/교양/기타</th><th>등교·공강</th><th>빈 시간</th><th>이른/늦은 수업</th><th>점심</th><th>점수·근거</th></tr></thead><tbody>${reps.map((r,i)=>`<tr><td><button data-planner-result="${i}">후보 ${i+1} 선택</button></td><td>${r.credits.total}/${r.credits.major}/${r.credits.general}/${r.credits.other??0}</td><td>${r.days}일 / ${(r.freeDays||[]).join(', ')||'없음'}</td><td>${r.gaps}${r.gapUnit}</td><td>${r.earlyCount??'미적용'} / ${r.lateCount??'미적용'}</td><td>${r.lunchSatisfied==null?'시각 미확인':r.lunchSatisfied?'확보':'겹침 '+r.lunchConflictMinutes+'분'}</td><td>${r.score?.toFixed(2)??'—'}점<br>${e(r.recommendation)}</td></tr>`).join('')}</tbody></table><p class="hint">새로 생성한 후보는 설정 범위를 충족합니다. 저장된 후보는 현재 학점 규칙으로 다시 검사하며, 미충족 후보는 초안으로 표시합니다.</p></details>`);
     }
     if(inspection){$('metrics').innerHTML=`<span>총 ${inspection.credits.total} · 전공 ${inspection.credits.major} · 교양 ${inspection.credits.general} · 타전공·기타 ${inspection.credits.other??0}${inspection.credits.unknown?' · 분류 미확인 '+inspection.credits.unknown:''}</span><span>${inspection.days}일 등교</span><span>빈 시간 ${inspection.gaps}${inspection.gapUnit} / 점심 ${inspection.lunchGap}${inspection.gapUnit}</span>`;}
     else $('metrics').textContent='조건 확인 필요';
@@ -174,7 +224,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     const tokens=[...new Set(courses.flatMap(c=>c.slots.map(s=>String(s.period)+(s.part||''))))];
     // A/B labels remain separate; mixed whole/subperiod courses are validated in minutes.
     const periodTokens=[...new Set([...Array.from({length:9},(_,i)=>String(i+1)),...tokens])].sort((a,b)=>parseInt(a)-parseInt(b)||a.localeCompare(b));
-    $('timetable').innerHTML=courses.length?`<table class="schedule"><thead><tr><th>교시</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${periodTokens.map(token=>`<tr><td>${token}</td>${days.map(day=>`<td>${courses.map((c,i)=>!asyncIds.has(c.id)&&c.slots.some(s=>s.day===day&&String(s.period)+(s.part||'')===token)?`<button data-detail="${e(c.id)}" class="class-block tone-${i%6}"><strong>${e(c.name)}</strong><br>${e(c.section)}분반 · ${e(c.instructor)}</button>`:'').join('')}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'<div class="empty">아직 시간표 초안이 없습니다.</div>';
+    $('timetable').innerHTML=`<table class="schedule"><thead><tr><th>교시</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${periodTokens.map(token=>`<tr><td>${token}</td>${days.map(day=>`<td>${courses.map((c,i)=>!asyncIds.has(c.id)&&c.slots.some(s=>s.day===day&&String(s.period)+(s.part||'')===token)?`<button data-detail="${e(c.id)}" class="class-block tone-${i%6}"><strong>${e(c.name)}</strong><br>${e(c.section)}분반 · ${e(c.instructor)}${c.room?'<br>'+e(c.room):''}</button>`:'').join('')}</td>`).join('')}</tr>`).join('')}</tbody></table>`+(courses.length?'':'<div class="schedule-empty"><strong>나만의 한 주를 시작해볼까요?</strong><span>강좌를 검색하거나 오른쪽에서 목표 학점까지 자동으로 채워보세요.</span></div>');
     const issues=inspection?.issues||[];
     $('result-notes').innerHTML=(issues.length?`<div class="notice"><b>편집 중인 초안 · 확인할 조건</b><ul>${issues.map(x=>`<li>${e(x)}</li>`).join('')}</ul></div>`:'<p class="hint">'+(courses.length?'현재 설정 조건 충족 (수강 자격·졸업요건 판정 아님)':'강좌를 선택하거나 자동 채우기를 시작하세요.')+'</p>')+(courses.some(c=>c.timeStatus==='unspecified')?'<h3>시간 미지정 강좌</h3><p class="hint">강의시간 미등록 · 실제 일정 확인 필요. 계획용으로 격자와 충돌하지 않는다고 가정하며 학점에 포함합니다.</p>':'')+[...courses].sort((a,b)=>(b.timeStatus==='unspecified')-(a.timeStatus==='unspecified')).map((c,index,sorted)=>`${c.timeStatus!=='unspecified'&&index>0&&sorted[index-1].timeStatus==='unspecified'?'<h3>시간 지정 강좌</h3>':''}<article class="draft-course"><div><b>${e(rowName(c))}</b> ${a.autoIds.includes(c.id)?'<span class="badge">자동 추가</span>':''} ${asyncIds.has(c.id)?`<span class="badge">정해진 수업시간 없음 · ${a.conditions.asyncConfirmed[c.id]?.type==='user_assumption'?'사용자 가정':'확인 기록 있음'}</span>`:''}<p>${e(c.timeRaw||'강의시간 미등록 · 실제 일정 확인 필요')} · ${c.credits}학점 · ${e({major:'전공',general:'교양',other:'타전공·기타',unknown:'분류 미확인'}[courseKind(c)])}<br>비고: ${e(c.remarks||'기재 없음')}</p></div><div><button class="secondary" data-edit-remove="${e(c.id)}">삭제</button> <button class="secondary" data-edit-replace="${e(c.id)}">교체</button> <button class="secondary" data-copy-course="${e(c.id)}">과목명 + 교수명 복사</button></div></article>`).join('');
     $('undo-plan').disabled=!a.undo.length;
@@ -188,7 +238,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     try{
       try{collect();}catch(error){error.kind='input';throw error;}p=cond();token=++revision;name=state.active;
       p.required=generationRequired(active(),data().courses,refill);
-      p.sectionsOnly=sections;
+      p.sectionsOnly=sections;p.diverseTime=!sections;
       const response=await api(scenario?'/api/scenarios':'/api/plan',p);
       if(token!==revision||name!==state.active){$('run-status').textContent='조건이 변경되어 이전 결과를 적용하지 않았습니다. 다시 실행해주세요.';$('result-status').textContent=$('run-status').textContent;return;}
       if(scenario){
@@ -234,7 +284,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     try{
     const response=await api('/api/replacements',{...replacement,filters:{kind:$('replace-kind').value,area:$('replace-area').value,query:$('replace-query').value,credits:$('replace-credits').value,tracks:kind==='major'?values('replace-tracks'):[],professors:values('replace-professors'),preferredOnly:$('replace-preferred').checked,sameTime:$('replace-same-time').checked,after:$('replace-after').value,before:$('replace-before').value}});
     if(replacement!==context)return;
-    $('replacement-status').textContent=`검색 완료: ${response.courses.length}개 · 시간 미확인 ${response.unknown.length}개. ${response.issues.join(' / ')}`;$('replacement-diagnostics').textContent=JSON.stringify(response.diagnostics,null,2);
+    $('replacement-status').textContent=`검색 완료: ${response.courses.length}개 · 시간 미확인 ${response.unknown.length}개. ${response.issues.join(' / ')}`;const d=response.diagnostics;$('replacement-status').textContent+=` · 검색조건 통과 ${d.filteredCourses}개 → 시간충돌 제외 ${d.conflictExcluded}개 · 필수조건 제외 ${d.hardExcluded}개. 기본값은 기존 강좌의 분류·학점입니다. 학점을 비우면 전체 학점을 검색합니다.`;$('replacement-diagnostics').textContent=JSON.stringify(response.diagnostics,null,2);
     replacement.remaining=response.remaining;preview=null;$('apply-replacement').disabled=true;$('replacement-preview').textContent='';
     $('replacement-list').innerHTML=response.issues.map(x=>`<p class="notice">${e(x)}</p>`).join('')+`<p>계획상 배치 가능한 ${response.courses.length}개 강좌 · 시간 미확인 ${response.unknown.length}개 (별도)</p>`+response.courses.map(id=>{const c=find(id);return `<div class="replacement-row">${e(rowName(c))} · ${c.credits}학점 · ${e(c.timeRaw||'시간 미지정 · 실제 일정 확인 필요')} · ${e({major:'전공',general:'교양',other:'타전공·기타',unknown:'분류 미확인'}[kind||courseKind(c)])}<button class="primary" data-direct-replacement="${e(id)}">교체</button><button class="secondary" data-preview-replacement="${e(id)}">배치·학점 미리보기</button></div>`;}).join('')+`<details><summary>시간 미확인 강좌 (배치 가능으로 확인하지 않음)</summary>${response.unknown.map(id=>`<p>${e(rowName(find(id)))}</p>`).join('')}</details>`;
     }catch(error){if(replacement===context)$('replacement-status').textContent='검색 실패: '+error.message;}finally{$('search-replacements').disabled=false;}
@@ -250,21 +300,27 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
   $('lunch-weekdays').onclick=()=>{for(const x of document.querySelectorAll('#lunch-days input'))x.checked='월화수목금'.includes(x.value);};
   $('settings-clock').onclick=guard(()=>{collectSettings();settings.close();$('open-advanced').click();});
   $('open-constraints').onclick=()=>{renderSettings();settings.showModal();};
+  $('reset-constraints').onclick=guard(async()=>{resetDialogConditions(active());renderSettings();await changed();message('조건 설정을 초기화했습니다. 기존 시간표는 유지됩니다. 자동 채우기를 다시 실행하세요.');});
   $('close-constraints').onclick=guard(async()=>{const before=JSON.stringify(active().conditions);collectSettings();if(before!==JSON.stringify(active().conditions))await changed();else persist();settings.close();});
   $('confirm-async').onclick=guard(async()=>{const id=$('async-course').value,evidence=$('async-evidence').value.trim();if(!evidence)throw Error('비동기 확인 근거를 입력해주세요.');active().conditions.asyncConfirmed[id]={evidence};persist();renderSettings();await inspect();});
   for(const id of ['exclude-internet','tracks','auto-areas','credit-mode','grade','free-days','free-days-hard','excluded',...['total','major','general','other'].flatMap(k=>['target','min','max'].map(f=>`target-${k}-${f}`))])$(id).addEventListener('change',guard(async()=>{collect();renderForm();await changed();await refresh();}));
   for(const id of ['area-top','list-profs','list-credits'])$(id).onchange=guard(refresh);
+  $('list-credits').addEventListener('input',guard(refresh));
+  $('reset-detail-search').onclick=guard(async()=>{$('area-top').value='';$('list-credits').value='';for(const o of $('list-profs').options)o.selected=false;await refresh();});
   document.addEventListener('click',guard(async event=>{const action=event.target.dataset.relax;if(!action)return;if(action==='freeDays')active().conditions.freeDaysHard=false;else if(action==='lunch'){active().conditions.lunch.enabled=false;active().conditions.lunch.prefer=true;}else return;renderForm();renderSettings();await changed();await run();}));
   $('auto-generate').onclick=guard(()=>run());$('section-generate').onclick=guard(()=>run({sections:true}));$('scenario-generate').onclick=guard(()=>run({scenario:true}));$('refill-plan').onclick=guard(()=>run({refill:true}));
-  $('save-plan').onclick=guard(()=>{collect();persist();message(`${state.active}안의 조건·수강이력·수정 초안을 저장했습니다. 새로고침 후에도 유지됩니다.`);});
-  $('plan-select').onchange=guard(async()=>{state.active=$('plan-select').value;revision++;renderForm();persist();await inspect();await compare();await refresh();});
+  $('save-plan').onclick=guard(async()=>{await api('/api/draft',{ids:active().ids,conditions:cond()});collect();persist();message(`${state.active}안의 조건·수강이력·수정 초안을 저장했습니다. 새로고침 후에도 유지됩니다.`);});
+  $('plan-select').onchange=guard(async()=>{const name=$('plan-select').value;try{await api('/api/draft',{ids:state.plans[name].ids,conditions:state.plans[name].conditions});}catch(error){$('plan-select').value=state.active;throw error;}state.active=name;revision++;renderForm();persist();await inspect();await compare();await refresh();});
   $('new-plan').onclick=guard(async()=>{const name=`사본 ${Object.keys(state.plans).length}`;state.plans[name]=clone(active());state.active=name;renderForm();persist();await inspect();});
-  $('undo-plan').onclick=guard(async()=>{undo(active());renderForm();persist();await inspect();await compare();});
+  $('undo-plan').onclick=guard(async()=>{const prev=active().undo.at(-1);if(prev)await api('/api/draft',{ids:prev.ids,conditions:prev.conditions});undo(active());renderForm();persist();await inspect();await compare();});
   $('find-open').onclick=guard(()=>openReplacement());$('cancel-replace').onclick=()=>{edit.close();replacement=null;preview=null;};
   $('search-replacements').onclick=guard(searchReplacements);
   async function commitReplacement(){
     if(!preview||state.active!==replacement.plan)return;
+    const original=active(),snapshot=JSON.stringify(original);
     const hard=await api('/api/inspect',{ids:preview.ids,conditions:preview.conditions,checkTargets:false});if(!hard.valid)throw Error(hard.issues.join(' / '));
+    await api('/api/draft',{ids:preview.ids,conditions:preview.conditions});
+    if(active()!==original||JSON.stringify(original)!==snapshot)throw Error('시간표가 변경되었습니다. 교체 검색을 다시 실행해주세요.');
     const old=find(replacement.removeId);replaceDraftCourse(active(),old,find(preview.id));active().conditions.creditCategories={...preview.conditions.creditCategories};
     if(old&&old.code!==find(preview.id).code)active().conditions.sessionExcluded=[...new Set([...active().conditions.sessionExcluded,old.code])];
     const c=find(preview.id);message('교체했습니다. 새 강좌는 고정하지 않으며 다음 자동 채우기에서 변경될 수 있습니다.');
@@ -275,7 +331,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
   document.addEventListener('change',guard(async event=>{
     const t=event.target;
     if(t.dataset.requiredMode!==undefined){active().conditions.required[Number(t.dataset.requiredMode)].mode=t.value;active().conditions.required[Number(t.dataset.requiredMode)].origin='user';await changed();}
-    if(t.dataset.requiredId!==undefined){const r=active().conditions.required[Number(t.dataset.requiredId)],old=r.id;r.id=t.value;r.origin='user';active().ids=active().ids.map(id=>id===old?t.value:id);await changed();}
+    if(t.dataset.requiredId!==undefined){const r=active().conditions.required[Number(t.dataset.requiredId)],old=r.id;try{await api('/api/draft',{ids:active().ids.map(id=>id===old?t.value:id),conditions:cond()});}catch(error){t.value=old;throw error;}r.id=t.value;r.origin='user';active().ids=active().ids.map(id=>id===old?t.value:id);await changed();}
   }));
   document.addEventListener('click',guard(async event=>{
     const b=event.target.closest('button');if(!b)return;const d=b.dataset,p=active().conditions;
@@ -289,8 +345,8 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     if(d.asyncRemove){delete p.asyncConfirmed[d.asyncRemove];persist();renderSettings();await inspect();renderCatalog();if($('details').open)showDetails(d.asyncRemove);}
     if(d.scenarioAdd){const c=find(d.scenarioAdd);if(p.required.some(r=>r.subject===subject(c)))throw Error('일반 고정/필수 지정을 먼저 해제한 뒤 성공 시 포함으로 지정해주세요.');p.scenarioIds=[...new Set([...p.scenarioIds,c.id])];renderScenario();persist();}
     if(d.scenarioRemove){p.scenarioIds=p.scenarioIds.filter(id=>id!==d.scenarioRemove);p.scenarioFixed=(p.scenarioFixed||[]).filter(r=>r.id!==d.scenarioRemove);renderScenario();persist();await inspect();}
-    if(d.plannerResult!==undefined){const r=active().results[Number(d.plannerResult)];checkpoint(active());active().ids=[...r.ids];active().autoIds=[...r.autoIds];persist();await inspect();$('result-status').textContent=r.recommendation+` · 목표 대비 총학점 ${r.targetDifference.total>=0?'+':''}${r.targetDifference.total}`;await compare();}
-    if(d.openPlan){state.active=d.openPlan;renderForm();persist();await inspect();await compare();await refresh();}
+    if(d.plannerResult!==undefined){const r=active().results[Number(d.plannerResult)];const checked=await api('/api/inspect',{ids:r.ids,conditions:cond()});if(!checked.valid)throw Error(checked.issues.join(' / '));await api('/api/draft',{ids:r.ids,conditions:cond()});checkpoint(active());active().ids=[...r.ids];active().autoIds=[...r.autoIds];persist();await inspect();$('result-status').textContent=r.recommendation+` · 목표 대비 총학점 ${r.targetDifference.total>=0?'+':''}${r.targetDifference.total}`;await compare();}
+    if(d.openPlan){await api('/api/draft',{ids:state.plans[d.openPlan].ids,conditions:state.plans[d.openPlan].conditions});state.active=d.openPlan;renderForm();persist();await inspect();await compare();await refresh();}
     if(d.editRemove){removeCourse(active(),find(d.editRemove));renderForm();persist();await inspect();await compare();}
     if(d.editReplace){$('details').close();await openReplacement(d.editReplace);}
     if(d.previewReplacement)await previewReplacement(d.previewReplacement);
@@ -306,7 +362,7 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     $('area-top').innerHTML='<option value="">전체</option>'+options([...new Set(areas().map(a=>a.split('(')[0]))]);
     $('list-profs').innerHTML=options(profs());
     if(state.fingerprint&&state.fingerprint!==data().fingerprint)message('자료가 갱신되었습니다. 저장한 초안과 조건을 유지하고 현재 자료로 다시 검사합니다.');
-    renderForm();guard(inspect)();
+    renderForm();guard(async()=>{await inspect();try{await api('/api/draft',{ids:active().ids,conditions:cond()});}catch(error){message('저장된 초안의 무결성을 확인해주세요. 기존 기록은 보존했습니다. '+error.message);}})();
   }
   dataChanged();
   return {
@@ -317,7 +373,18 @@ export function createPlanner({getData,api,message,refresh,showDetails,renderCat
     catalogFilters:()=>{const major=$('kind').value==='major';$('apply-list-tracks').hidden=!major;$('apply-list-tracks').textContent='목록의 '+listTracks().join(' · ')+'을 학점 기준으로 적용';$('area-top').disabled=major;$('membership').disabled=major;$ ('major-browser').hidden=!major;$('major-track').disabled=['ict','it'].includes($('major-family').value);return {excludeInternet:!!active().conditions.excludeInternet,major_profile:active().conditions.majorProfile,term:active().conditions.term,search_group:major?listGroup():'',tracks:[],area_top:major?'':$('area-top').value,area:major?'':$('membership').value,professors:values('list-profs'),credits:$('list-credits').value};},
     requirementsFor:c=>c.curriculum?[...new Set(c.curriculum.filter(r=>r.major.toLowerCase()===active().conditions.majorProfile).map(r=>r.requirement))]:[...new Set(c.observations.map(o=>o.requirement))],
     extraActions:c=>`<button class="text-button" data-copy-course="${e(c.id)}">과목명 + 교수명 복사</button><button class="text-button" data-history-add="${e(c.code)}">${state.completed.includes(c.code)?'이전 수강 등록됨':'이전 수강'}</button><button class="text-button" data-exclude-add="${e(c.code)}">과목 제외</button>${areaOf(c).includes(EXT)?`<button class="text-button" data-scenario-add="${e(c.id)}">성공 시 포함</button>`:''}`,
-    add:guard(async c=>{if(active().conditions.scenarioIds.some(id=>subject(find(id))===subject(c)))throw Error('성공 시 포함 강좌는 일반 고정과 중복 지정할 수 없습니다.');active().conditions.required.push({subject:subject(c),mode:'fixed',id:c.id,origin:'user'});if(['major','general'].includes($('kind').value)&&c.app_credit_categories?.includes($('kind').value))active().conditions.creditCategories={...active().conditions.creditCategories,[subject(c)]:$('kind').value};if(!active().ids.some(id=>find(id)&&subject(find(id))===subject(c)))active().ids.push(c.id);await changed();}),
+    add:guard(async c=>{
+      const pl=active(),snapshot=JSON.stringify(pl),p=clone(pl.conditions);
+      if(p.scenarioIds.some(id=>subject(find(id))===subject(c)))throw Error('성공 시 포함 강좌는 일반 고정과 중복 지정할 수 없습니다.');
+      const already=pl.ids.includes(c.id);
+      const checked=await api('/api/draft',{ids:already?[...pl.ids]:[...pl.ids,c.id],conditions:cond()});
+      if(active()!==pl||JSON.stringify(pl)!==snapshot)throw Error('시간표가 변경되었습니다. 담기를 다시 눌러주세요.');
+      checkpoint(pl);
+      if(already){pinDraftCourse(pl,c);await changed();$('details').close();message(`${c.name}을 고정했습니다. 다음 자동 채우기의 모든 후보에서 유지됩니다.`);await refresh();return;}
+      p.required.push({subject:subject(c),mode:'fixed',id:c.id,origin:'user'});
+      if(['major','general'].includes($('kind').value)&&c.app_credit_categories?.includes($('kind').value))p.creditCategories={...p.creditCategories,[subject(c)]:$('kind').value};
+      pl.conditions=p;pl.ids=checked.ids;await changed();message(`${c.name} 강좌를 담았습니다.`);
+    }),
     dataChanged
   };
 }

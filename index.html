@@ -1,15 +1,17 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>울산대 시간표 조합기</title><link rel="stylesheet" href="./style.css"><meta name="theme-color" content="#256b62"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icons/icon-192.png"><link rel="stylesheet" href="./mobile.css"></head>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>U:TIME · 나의 시간표</title><link rel="stylesheet" href="./style.css"><meta name="theme-color" content="#256b62"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icons/icon-192.png"><link rel="stylesheet" href="./mobile.css"><link rel="stylesheet" href="./dashboard.css"></head>
 <body>
-<header><a class="brand" href="./">U<span>:</span>TIME <small>울산대 시간표 조합기</small></a><div class="semester">2026 — 2학기 <span class="local">웹앱 자료</span></div></header>
-<main>
-<div class="intro"><h1>나의 시간표</h1><button id="manage" class="secondary">데이터 관리</button></div>
+<a class="skip-link" href="#dashboard-main">본문으로 건너뛰기</a>
+<aside class="sidebar"><a class="brand" href="./">U<span>:</span>TIME<small>나에게 맞는 대학 생활</small></a><div class="nav-caption">WORKSPACE</div><nav aria-label="주 메뉴"><button type="button" data-nav="week" aria-current="page"><span aria-hidden="true">▦</span> 나의 시간표</button><button type="button" data-nav="search"><span aria-hidden="true">⌕</span> 강좌 탐색</button><button type="button" data-nav="saved"><span aria-hidden="true">▤</span> 저장한 시간표</button><button type="button" data-nav="candidates"><span aria-hidden="true">◫</span> 시간표 비교</button></nav><div class="sidebar-bottom"><div class="sidebar-tip"><span class="tip-icon">✧</span><strong>이번 학기도, 나답게.</strong><p>목표 학점을 설정하고<br>나만의 한 주를 만들어보세요.</p></div><button type="button" data-nav="settings">⚙ 시간표 조건 설정</button><button type="button" data-nav="data">자료 및 앱 관리</button><p>U:TIME <span>울산대학교</span></p></div></aside>
+<header class="topbar"><div id="top-search"><span aria-hidden="true">⌕</span></div><div id="top-term"></div><span class="semester">강좌 자료 연결 중</span></header>
+<main id="dashboard-main">
+<div class="intro"><div><p class="eyebrow">MY TIMETABLE</p><h1>나의 시간표<span class="title-dot">.</span></h1><p>내가 원하는 수업으로, 나만의 한 주를 완성하세요.</p></div><button id="manage" class="secondary">데이터 관리</button></div>
 <div id="message" role="status" aria-live="polite"></div>
 <div class="workspace">
 <section class="catalog panel"><div class="section-head"><h2>01 <span>강좌 둘러보기</span></h2><span id="count" class="count"></span></div>
 <label class="search-label">과목명 · 교수명 · 과목코드<input id="search" type="search" placeholder="어떤 수업을 찾고 있나요?"></label>
 <div class="filters"><label>분류<select id="kind"><option value="">전체 강좌</option><option value="major">전공 (앱 계산 대상)</option><option value="general">교양 (수집 자료)</option></select></label><label>조회 소속·영역<select id="membership"><option value="">전체 조회 범위</option></select></label><label>나의 학년<select id="grade"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></label></div>
-<p class="hint">교양은 학년과 관계없이 표시됩니다. 수강 자격과 비고의 별도 제한을 확인하세요.</p>
+<p class="hint">전공 목록은 선택 학년 이하로 표시합니다. 학년 미확인은 유지합니다. 교양은 학년과 관계없이 표시됩니다. 수강 자격과 비고의 별도 제한을 확인하세요.</p>
 <div id="courses" class="course-list"></div><div class="pagination"><button id="previous" class="secondary">← 이전</button><span id="page"></span><button id="next" class="secondary">다음 →</button></div>
 </section>
 <aside class="builder panel"><div class="section-head"><h2>02 <span>나의 조합 조건</span></h2><span id="selected-count" class="count">0 / 8</span></div>
