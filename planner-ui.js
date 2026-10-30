@@ -1,5 +1,5 @@
-import {candidateGallery} from './candidate-view.mjs';
-import {clone,blankPlan,loadState,saveState,checkpoint,removeCourse,applyReplacement,undo,validateFillResponse,generationRequired,replaceDraftCourse,pinDraftCourse,resetDialogConditions} from './state.mjs';
+import {candidateGallery} from './candidate-view.mjs?v=8d063b0d1d88b29c';
+import {clone,blankPlan,loadState,saveState,checkpoint,removeCourse,applyReplacement,undo,validateFillResponse,generationRequired,replaceDraftCourse,pinDraftCourse,resetDialogConditions} from './state.mjs?v=8d063b0d1d88b29c';
 const $=id=>document.getElementById(id);
 const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const subject=c=>`${c.year}-${c.semester}:${c.code}`;

@@ -1,6 +1,6 @@
-import {config} from './config.js';
-import {cancelCalculation} from './transport.mjs';
-import {STORAGE_KEY} from './state.mjs';
+import {config} from './config.js?v=8d063b0d1d88b29c';
+import {cancelCalculation} from './transport.mjs?v=8d063b0d1d88b29c';
+import {STORAGE_KEY} from './state.mjs?v=8d063b0d1d88b29c';
 const tools=document.createElement('div');tools.className='web-tools';tools.innerHTML='<button id="install-app" hidden>앱 설치</button><button id="cancel-calculation">계산 취소</button><button id="export-personal">내 시간표 백업</button><button id="apply-update" hidden>새 버전 적용</button><span id="web-status" class="web-status" role="status"></span>';document.querySelector('.intro').after(tools);
 const status=document.querySelector('#web-status');const connection=()=>status.textContent=`${config.provider==='supabase'?'Supabase 강좌 데이터':'정제된 배포 데이터'} · 계산은 이 기기에서 수행 · ${navigator.onLine?'온라인':'오프라인: 저장된 배포 파일만 사용 가능'}`;connection();addEventListener('online',connection);addEventListener('offline',connection);
 document.querySelector('#cancel-calculation').onclick=cancelCalculation;

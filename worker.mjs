@@ -1,4 +1,4 @@
-import {validateDraft,catalog,plan,inspectSchedule,replacements,scenarios} from './core.mjs';
+import {validateDraft,catalog,plan,inspectSchedule,replacements,scenarios} from './core.mjs?v=8d063b0d1d88b29c';
 let courses=[];
 self.onmessage=({data:{id,path,body}})=>{
  try {let result;

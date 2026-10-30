@@ -1,4 +1,4 @@
-import {createPlanner} from './planner-ui.js';
+import {createPlanner} from './planner-ui.js?v=8d063b0d1d88b29c';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let data, filtered = [], selected = new Map(), results = [], current = 0, page = 0, request = 0, revision = 0;
@@ -6,7 +6,7 @@ let planner;
 const codeKey = c => `${c.year}-${c.semester}:${c.code}`;
 const timeLabel = c => c.app_delivery_mode==='internet' ? '인터넷 강의 · 사용자 지정 분류 / 실제 일정 확인 필요' : planner?.timeLabel(c) || ({unspecified:'시간 미지정',unverified_subperiod:'A/B 교시 확인 필요',unsupported:'시간 해석 확인 필요'}[c.timeStatus] || c.timeRaw);
 function message(text='') { $('message').textContent = text; }
-import {api} from './transport.mjs';
+import {api} from './transport.mjs?v=8d063b0d1d88b29c';
 
 function guarded(fn) { return async (...args) => { try { await fn(...args); } catch(e) { message(e.message); } }; }
 function invalidate() { revision++; results = []; current = 0; renderResults(); $('result-status').textContent = '조건이 변경되었습니다. 조합을 다시 찾아주세요.'; }
